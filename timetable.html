@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My Timetable</title>
+<style>
+:root{--bg:#f4f5f9;--card:#fff;--tx:#14161f;--mu:#6b7080;--ac:#4f46e5;--acs:#e0e7ff;--ln:#e3e5ee;--ok:#16a34a;--lab:#0e7490;--brk:#b45309;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1117;--card:#1a1d27;--tx:#eceef6;--mu:#9096a8;--ac:#818cf8;--acs:#26294a;--ln:#2a2e3d;--ok:#4ade80;--lab:#22d3ee;--brk:#fbbf24}}
+:root[data-theme="dark"]{--bg:#0f1117;--card:#1a1d27;--tx:#eceef6;--mu:#9096a8;--ac:#818cf8;--acs:#26294a;--ln:#2a2e3d;--ok:#4ade80;--lab:#22d3ee;--brk:#fbbf24}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:14px}
+h1{font-size:20px;margin:0}.sub{color:var(--mu);font-size:13px}
+.row{display:flex;gap:6px;overflow-x:auto;padding:10px 0;scrollbar-width:none}
+.row::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--ln);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:20px;font-size:14px}
+.chip.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.chip.td{border-color:var(--ac)}
+.now{background:var(--ac);color:#fff;border-radius:16px;padding:16px;margin:4px 0 8px}
+.now small{opacity:.85}.now b{display:block;font-size:22px;margin:4px 0}
+.blk{display:flex;gap:12px;background:var(--card);border:1px solid var(--ln);border-left:4px solid var(--ac);border-radius:12px;padding:12px;margin:8px 0}
+.blk.lab{border-left-color:var(--lab)}.blk.brk{border-left-color:var(--brk);opacity:.8;padding:8px 12px}
+.blk.free{opacity:.55}.blk.cur{background:var(--acs);border-color:var(--ac)}
+.t{width:78px;flex:0 0 auto;font-size:12px;color:var(--mu)}.t b{display:block;color:var(--tx);font-size:13px}
+.n{font-weight:600}.f{font-size:13px;color:var(--mu)}
+.tag{font-size:11px;background:var(--ok);color:#fff;border-radius:6px;padding:1px 6px;margin-left:6px}
+.empty{text-align:center;color:var(--mu);padding:30px 0}
+</style></head><body>
+<h1>📚 My Timetable</h1><div class="sub" id="clock"></div>
+<div class="row" id="secs"></div>
+<div id="now"></div>
+<div class="row" id="days"></div>
+<div id="list"></div>
+<div class="sub" style="margin-top:16px">B.Tech 1st Sem · C-Cycle 2026-27 · Sunday tutorial slots and free periods are assumed from the PDF layout.</div>
+<script>
+const T={
+C1:{2:"CL,CL,RW,MAT,ESC,ESC",3:"FL,FL,RW,CHE,CAED,-",4:"MAT,FCP,CHE,SS,FCP,NCC",5:"CHE,CAED,CAED,MAT,FCP,KAN",6:"MAT,ESC,ESC,PL,PL,RW",0:"MAT,CHE,FCP,TUT,TUT,TUT"},
+C2:{2:"FL,FL,RW,CHE,ESC,ESC",3:"CHE,MAT,FCP,CL,CL,RW",4:"MAT,FCP,SS,FCP,CAED,-",5:"FCP,MAT,CHE,MAT,KAN,NCC",6:"CHE,ESC,ESC,PL,PL,RW",0:"MAT,CAED,CAED,TUT,TUT,TUT"},
+C3:{2:"CAED,MAT,FCP,-,ESC,ESC",3:"MAT,CHE,SS,FCP,CHE,NCC",4:"CL,CL,RW,CAED,KAN,-",5:"FL,FL,RW,CHE,FCP,MAT",6:"MAT,ESC,ESC,PL,PL,RW",0:"CHE,MAT,FCP,TUT,TUT,TUT"},
+C4:{2:"CHE,MAT,CAED,CAED,ESC,ESC",3:"CHE,CAED,CAED,MAT,FCP,KAN",4:"FL,FL,RW,CHE,FCP,MAT",5:"CL,CL,RW,FCP,MAT,NCC",6:"CHE,ESC,ESC,PL,PL,RW",0:"SS,FCP,MAT,TUT,TUT,TUT"},
+C5:{2:"MAT,FCP,SS,CHE,ESC,ESC",3:"CL,CL,RW,MAT,KAN,FCP",4:"FCP,CHE,MAT,CAED,NCC,-",5:"MAT,CHE,FCP,FL,FL,RW",6:"CHE,ESC,ESC,PL,PL,RW",0:"CAED,MAT,-,TUT,TUT,TUT"},
+C6:{2:"CHE,SS,FCP,MAT,ESC,ESC",3:"MAT,CHE,CAED,CAED,FCP,NCC",4:"MAT,FCP,CHE,CL,CL,RW",5:"KAN,CHE,FCP,MAT,CAED,-",6:"MAT,ESC,ESC,PL,PL,RW",0:"FL,FL,RW,TUT,TUT,TUT"}};
+const N={MAT:"Mathematics-1",CHE:"Chemistry",CAED:"Engg. Drawing (CAED)",FCP:"C Programming",FL:"C Programming Lab",CL:"Chemistry Lab",RW:"Report Writing & Assessment",SS:"Soft Skills",ESC:"ESC-1X (Engg. Science)",KAN:"Kannada (KANS/KANB)",NCC:"NCC / NSS / Sports",PL:"Project Lab-1",TUT:"Tutorial & Self Learning","-":"Free period",BRK:"Short Break",LUN:"Lunch Break"};
+const F={MAT:["Dr. Sunita J","Prof. Shivakumar Timnak","Dr. Sharanayya Swami","Dr. Sharanayya Swami","Dr. Pallavi Patil","Prof. Shilpa Padashetty"],
+CHE:["Dr. Nirdosh Patil","Dr. Nirdosh Patil","Dr. Shweta Patil","Prof. Earamma Patil","Dr. Parvati. G","Prof. Neha B"],
+CAED:["Dr. Shivakumar Rachoti","Dr. Shivakumar Rachoti","Prof. Shrishail Patil","Prof. Shrishail Patil","Prof. Mahesh Nippani","Prof. Mahesh Nippani"],
+FCP:["Prof. Basawantrao","Prof. Kanchana","Prof. Shilpa","Prof. Mahalaxmi S","Prof. Vinay Bagewadi","Dr. Manjula Biradar"],
+FL:["Prof. Basawantrao","Prof. Trupti","Prof. Priyanka","Prof. Mahalakshmi S","Prof. Vinayak Bagewadi","Dr. Manjula Biradar"],
+SS:Array(6).fill("Prof. Shivamurthi Hugar"),KAN:Array(6).fill("Prof. Savita Bhosagi")};
+const S=[[600,655],[660,720],[735,795],[840,895],[900,960],[965,1020]];
+const DN=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],SH=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const ORDER=[1,2,3,4,5,6,0],MERGE=["ESC","PL","FL","CL","TUT"];
+let sec="C1",ov={},ovOpen=false;const dk=o=>{const d=new Date();d.setDate(d.getDate()+o);return d.toDateString()};
+try{ov=JSON.parse(localStorage.getItem("ov")||"{}")}catch(e){}
+let sel=ov[dk(0)]??new Date().getDay();
+try{sec=localStorage.getItem("sec")||"C1"}catch(e){}
+const fm=m=>{let h=Math.floor(m/60),p=h>=12?"PM":"AM";h=h%12||12;return h+":"+String(m%60).padStart(2,"0")+" "+p};
+function build(s,d){const r=T[s][d];if(!r)return[];const b=[];
+r.split(",").forEach((c,i)=>{const l=b[b.length-1];if(l&&l.c==c&&MERGE.includes(c))l.e=S[i][1];else b.push({c,s:S[i][0],e:S[i][1]})});
+b.push({c:"BRK",s:720,e:735},{c:"LUN",s:795,e:840});return b.sort((a,b)=>a.s-b.s)}
+const fac=c=>F[c]?F[c][+sec[1]-1]:"";
+const dur=m=>m>=60?Math.floor(m/60)+"h "+(m%60?m%60+"m":""):m+" min";
+function render(){const now=new Date(),m=now.getHours()*60+now.getMinutes(),td=ov[dk(0)]??now.getDay();
+document.getElementById("clock").textContent=DN[now.getDay()]+", "+now.toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})+" · "+fm(m);
+document.getElementById("secs").innerHTML=Object.keys(T).map(s=>`<button class="chip ${s==sec?"on":""}" onclick="setSec('${s}')">${s}</button>`).join("");
+document.getElementById("days").innerHTML=ORDER.map(d=>`<button class="chip ${d==sel?"on":""} ${d==td?"td":""}" onclick="setDay(${d})">${SH[d]}${d==td?" •":""}</button>`).join("");
+const tb=build(sec,td);let cur=tb.find(b=>b.s<=m&&m<b.e),nx=tb.find(b=>b.s>m&&b.c!="BRK"&&b.c!="LUN"&&b.c!="-");
+let h;
+if(!tb.length)h=`<small>Today</small><b>No classes today 🎉</b>`;
+else if(cur&&cur.c!="-")h=`<small>${cur.c=="BRK"||cur.c=="LUN"?"Now":"Current class"}</small><b>${N[cur.c]}</b><small>${fac(cur.c)?fac(cur.c)+" · ":""}ends ${fm(cur.e)} (${dur(cur.e-m)} left)</small>`+(nx&&nx!=cur?`<br><small>Next: ${N[nx.c]} at ${fm(nx.s)}</small>`:"");
+else if(nx)h=`<small>${cur?"Free period":"No class right now"}</small><b>Next: ${N[nx.c]}</b><small>${fac(nx.c)?fac(nx.c)+" · ":""}starts ${fm(nx.s)} (in ${dur(nx.s-m)})</small>`;
+else h=`<small>Today</small><b>All classes done ✅</b>`;
+const o0=ov[dk(0)],o1=ov[dk(1)];document.getElementById("now").innerHTML=`<div class="now">${h}</div>`+(o0!=null?`<div class="sub">⚠️ Today follows ${DN[o0]}'s timetable</div>`:"")+(o1!=null?`<div class="sub">⚠️ Tomorrow follows ${DN[o1]}'s timetable</div>`:"")+`<details ${ovOpen?"open":""} ontoggle="ovOpen=this.open" style="margin:8px 0"><summary class="sub">Special day? Follow another day's timetable</summary>${ovUI(0)}${ovUI(1)}</details>`;
+const b=build(sec,sel);
+document.getElementById("list").innerHTML=b.length?b.map(x=>{const isc=sel==td&&x.s<=m&&m<x.e,cl=x.c=="BRK"||x.c=="LUN"?"brk":x.c=="-"?"free":(x.c=="CL"||x.c=="FL"||x.c=="PL")?"lab":"";
+return `<div class="blk ${cl} ${isc?"cur":""}"><div class="t"><b>${fm(x.s)}</b>${fm(x.e)}</div><div><div class="n">${N[x.c]}${isc?'<span class="tag">NOW</span>':""}</div><div class="f">${fac(x.c)}</div></div></div>`}).join(""):`<div class="empty">No classes on ${DN[sel]}</div>`}
+function ovUI(k){const c=ov[dk(k)];return `<div class="row"><span class="sub" style="align-self:center;width:66px;flex:0 0 auto">${k?"Tomorrow":"Today"}</span><button class="chip ${c==null?"on":""}" onclick="setOv(${k},null)">Normal</button>`+ORDER.map(d=>`<button class="chip ${c==d?"on":""}" onclick="setOv(${k},${d})">${SH[d]}</button>`).join("")+`</div>`}
+function setOv(k,d){if(d==null)delete ov[dk(k)];else ov[dk(k)]=d;const keep={};[0,1].forEach(i=>{if(ov[dk(i)]!=null)keep[dk(i)]=ov[dk(i)]});ov=keep;try{localStorage.setItem("ov",JSON.stringify(ov))}catch(e){}sel=ov[dk(0)]??new Date().getDay();render()}
+function setSec(s){sec=s;try{localStorage.setItem("sec",s)}catch(e){}render()}
+function setDay(d){sel=d;render()}
+render();setInterval(render,30000);
+</script></body></html>
